@@ -28,16 +28,16 @@
         "last_name": "R",
         "age": 30,
         "occupation": "head of public relation",
-        "personality_and_values": "GR enjoys biking and photography",
-        "public_info": "GR, open-minded and outgoing yet sensitive, advocates care and fairness. Her decision-making is intuitive and inclusive.",
+        "personality_and_values": "GR, willfully ignorant of technical details, refuses to feel talked down to, dismissive of the importance of cybersecurity. feels that technical staff overstate the severity of incidents and unnecessarily assume the worst. Her decision-making is intuitive.",
+        "public_info": "GR enjoys biking and photography",
         "secret": "GR sells forged paintings to wealthy clients."
     }, {
         "first_name": "S",
         "last_name": "J",
         "age": 22,
         "occupation": "technical employee",
-        "personality_and_values": "SJ enjoys spending time outdoors, hiking, and rock climbing.",
-        "public_info": "SJ is exuberant, spontaneous, and pleasure-seeking, often making impulsive decisions.",
+        "personality_and_values": "SJ is serious, professional, and goal-oriented, rarely making impulsive decisions.",
+        "public_info": "SJ enjoys spending time outdoors, hiking, and rock climbing.",
         "secret": "SJ was secretly in love with her best friend's husband."
     }
 ]
