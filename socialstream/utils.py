@@ -99,8 +99,8 @@ def get_abstract(description: str) -> str:
 
 
 def initialize_session_state(force_reload: bool = False) -> None:
-    all_agents = AgentProfile.find().all()[:10]
-    all_envs = EnvironmentProfile.find().all()[:10]
+    all_agents = AgentProfile.find().all()
+    all_envs = EnvironmentProfile.find().all()
     st.session_state.agent_mapping = [
         {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
     ] * 2
@@ -352,5 +352,5 @@ def step(user_input: str | None = None) -> None:
     done = all(terminated.values())
 
 
-# def _agent_profile_to_friendabove_self(profile: AgentProfile, agent_id: int) -> str:
-#     return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}. Big five type: {profile.big_five}</p>"
+def get_preview(target: str, length: int = 20) -> str:
+    return " ".join(target.split()[:length]) + "..."

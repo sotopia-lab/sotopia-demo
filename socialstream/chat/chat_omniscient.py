@@ -185,6 +185,7 @@ def chat_demo() -> None:
                                 ),
                             )
 
+            st.markdown("Goals")
             agent1_goal_col, agent2_goal_col = st.columns(2)
             agent_goal_cols = [agent1_goal_col, agent2_goal_col]
             for agent_idx, goal_info in enumerate(goals_info):
@@ -380,7 +381,10 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
             continue
 
         if role == "obs" or message.get("type") == "action":
-            content = json.loads(content)
+            try:
+                content = json.loads(content)
+            except Exception as e:
+                print(e)
 
         with st.chat_message(role, avatar=avatar_mapping.get(role, None)):
             if isinstance(content, dict):
