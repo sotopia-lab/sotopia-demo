@@ -1,4 +1,6 @@
 import asyncio
+import json
+import os
 from functools import wraps
 from typing import Optional, TypedDict, cast
 
@@ -98,9 +100,31 @@ def get_abstract(description: str) -> str:
     return " ".join(description.split()[:50]) + "..."
 
 
+def load_additional_agents() -> list[AgentProfile]:
+    data_file = "data/negotiation_agents.json"
+    if not os.path.exists(data_file):
+        return []
+    agents = [AgentProfile(**agent_data) for agent_data in json.load(open(data_file))]
+    return agents
+
+
+def load_additional_envs() -> list[EnvironmentProfile]:
+    data_file = "data/negotiation_scenarios.json"
+    if not os.path.exists(data_file):
+        return []
+    envs = [EnvironmentProfile(**env_data) for env_data in json.load(open(data_file))]
+    return envs
+
+
 def initialize_session_state(force_reload: bool = False) -> None:
-    all_agents = AgentProfile.find().all()
-    all_envs = EnvironmentProfile.find().all()
+    all_agents = AgentProfile.find().all()[:10]
+    all_envs = EnvironmentProfile.find().all()[:10]
+    additional_agents = load_additional_agents()
+    additional_envs = load_additional_envs()
+
+    all_agents = additional_agents + all_agents
+    all_envs = additional_envs + all_envs
+
     st.session_state.agent_mapping = [
         {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
     ] * 2
