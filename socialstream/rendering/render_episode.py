@@ -5,20 +5,7 @@ from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_agent, render_text_for_environment
 
 from socialstream.rendering_utils import render_for_humans
-from socialstream.utils import get_full_name, get_preview
-
-
-def initialize_episodes_to_display() -> None:
-    if "all_codenames" not in st.session_state:
-        codename_pk_mapping = {
-            env.codename: env.pk for env in EnvironmentProfile.find().all()
-        }
-        st.session_state.all_codenames = codename_pk_mapping
-        st.session_state.current_episodes = EpisodeLog.find(
-            EpisodeLog.environment
-            == codename_pk_mapping[list(codename_pk_mapping.keys())[0]]
-        ).all()
-
+from socialstream.utils import get_full_name, get_preview, initialize_session_state
 
 role_mapping = {
     "Background Info": "background",
@@ -34,7 +21,7 @@ def update_database_callback() -> None:
 
 
 def rendering_demo() -> None:
-    initialize_episodes_to_display()
+    initialize_session_state()
 
     codenames = list(st.session_state.all_codenames.keys())
 
@@ -43,13 +30,6 @@ def rendering_demo() -> None:
         st.session_state.current_episodes = EpisodeLog.find(
             EpisodeLog.environment == st.session_state.all_codenames[codename_key]
         ).all()
-
-    # Support customized database
-    database_input = st.text_input(
-        label="Use your own database (optional):",
-        key="database_input",
-        on_change=update_database_callback,
-    )  # TODO check how to update the database
 
     # Dropdown for codename selection
     st.selectbox(

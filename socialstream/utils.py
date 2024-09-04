@@ -5,6 +5,7 @@ from functools import wraps
 from typing import Optional, TypedDict, cast
 
 import streamlit as st
+from redis_om import get_redis_connection
 from sotopia.agents import Agents, LLMAgent
 from sotopia.database import (
     AgentProfile,
@@ -117,28 +118,31 @@ def load_additional_envs() -> list[EnvironmentProfile]:
 
 
 def initialize_session_state(force_reload: bool = False) -> None:
-    all_agents = AgentProfile.find().all()[:10]
-    all_envs = EnvironmentProfile.find().all()[:10]
-    additional_agents = load_additional_agents()
-    additional_envs = load_additional_envs()
-
-    all_agents = additional_agents + all_agents
-    all_envs = additional_envs + all_envs
-
-    st.session_state.agent_mapping = [
-        {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
-    ] * 2
-    st.session_state.env_mapping = {
-        env_profile.codename: env_profile for env_profile in all_envs
-    }
-    st.session_state.env_description_mapping = {
-        env_profile.codename: get_abstract(
-            render_text_for_environment(env_profile.scenario)
-        )
-        for env_profile in all_envs
-    }
-
     if "active" not in st.session_state or force_reload:
+        all_agents = AgentProfile.find().all()[:10]
+        all_envs = EnvironmentProfile.find().all()[:10]
+        additional_agents = load_additional_agents()
+        additional_envs = load_additional_envs()
+
+        all_agents = additional_agents + all_agents
+        all_envs = additional_envs + all_envs
+
+        st.session_state.agent_mapping = [
+            {
+                get_full_name(agent_profile): agent_profile
+                for agent_profile in all_agents
+            }
+        ] * 2
+        st.session_state.env_mapping = {
+            env_profile.codename: env_profile for env_profile in all_envs
+        }
+        st.session_state.env_description_mapping = {
+            env_profile.codename: get_abstract(
+                render_text_for_environment(env_profile.scenario)
+            )
+            for env_profile in all_envs
+        }
+
         st.session_state.active = False
         st.session_state.conversation = []
         st.session_state.background = "Default Background"
@@ -163,6 +167,16 @@ def initialize_session_state(force_reload: bool = False) -> None:
             agent_names=[],
             reset_agents=True,
         )
+
+    if "all_codenames" not in st.session_state or force_reload:
+        codename_pk_mapping = {
+            env.codename: env.pk for env in EnvironmentProfile.find().all()
+        }
+        st.session_state.all_codenames = codename_pk_mapping
+        st.session_state.current_episodes = EpisodeLog.find(
+            EpisodeLog.environment
+            == codename_pk_mapping[list(codename_pk_mapping.keys())[0]]
+        ).all()
 
 
 def set_from_env_agent_profile_combo(
@@ -378,3 +392,17 @@ def step(user_input: str | None = None) -> None:
 
 def get_preview(target: str, length: int = 20) -> str:
     return " ".join(target.split()[:length]) + "..."
+
+
+def reset_database(db_url: str) -> None:
+    EpisodeLog._meta.database = get_redis_connection(url=db_url)
+    EpisodeLog.Meta.database = get_redis_connection(url=db_url)
+
+    AgentProfile._meta.database = get_redis_connection(url=db_url)
+    AgentProfile.Meta.database = get_redis_connection(url=db_url)
+
+    EnvironmentProfile._meta.database = get_redis_connection(url=db_url)
+    EnvironmentProfile.Meta.database = get_redis_connection(url=db_url)
+
+    EnvAgentComboStorage._meta.database = get_redis_connection(url=db_url)
+    EnvAgentComboStorage.Meta.database = get_redis_connection(url=db_url)
