@@ -56,175 +56,176 @@ def chat_demo() -> None:
             reset_agents=True,
         )
 
-    st.checkbox(
-        "Make the scenario editable",
-        key="edit_scenario",
-        on_change=other_choice_callback,
-        disabled=st.session_state.active,
-    )
+    with st.sidebar:
+        st.checkbox(
+            "Make the scenario editable",
+            key="edit_scenario",
+            on_change=other_choice_callback,
+            disabled=st.session_state.active,
+        )
 
-    with st.expander("Create your scenario!", expanded=True):
-        scenarios = st.session_state.env_mapping
-        agent_list_1, agent_list_2 = st.session_state.agent_mapping
+        with st.expander("Create your scenario!", expanded=True):
+            scenarios = st.session_state.env_mapping
+            agent_list_1, agent_list_2 = st.session_state.agent_mapping
 
-        scenario_col, scenario_desc_col = st.columns(2)
-        with scenario_col:
-            st.selectbox(
-                "Choose a scenario:",
-                scenarios.keys(),
-                disabled=st.session_state.active,
-                index=0,
-                on_change=env_agent_choice_callback,
-                key="scenario_choice",
-            )
+            scenario_col, scenario_desc_col = st.columns(2)
+            with scenario_col:
+                st.selectbox(
+                    "Choose a scenario:",
+                    scenarios.keys(),
+                    disabled=st.session_state.active,
+                    index=0,
+                    on_change=env_agent_choice_callback,
+                    key="scenario_choice",
+                )
 
-        with scenario_desc_col:
-            st.markdown(
-                f"""**Scenario Description:** {st.session_state.env_description_mapping[st.session_state.scenario_choice]}""",
-                unsafe_allow_html=True,
-            )
+            with scenario_desc_col:
+                st.markdown(
+                    f"""**Scenario Description:** {st.session_state.env_description_mapping[st.session_state.scenario_choice]}""",
+                    unsafe_allow_html=True,
+                )
 
-        agent_col1, agent_col2 = st.columns(2)
-        with agent_col1:
-            agent_choice_1 = st.selectbox(
-                "Choose the first agent:",
-                agent_list_1.keys(),
-                disabled=st.session_state.active,
-                index=0,
-                on_change=env_agent_choice_callback,
-                key="agent_choice_1",
-            )
-        with agent_col2:
-            agent_choice_2 = st.selectbox(
-                "Choose the second agent:",
-                agent_list_2.keys(),
-                disabled=st.session_state.active,
-                index=1,
-                on_change=env_agent_choice_callback,
-                key="agent_choice_2",
-            )
-        if agent_choice_1 == agent_choice_2:
-            st.warning(
-                "The two agents cannot be the same. Please select different agents."
-            )
-            st.stop()
+            agent_col1, agent_col2 = st.columns(2)
+            with agent_col1:
+                agent_choice_1 = st.selectbox(
+                    "Choose the first agent:",
+                    agent_list_1.keys(),
+                    disabled=st.session_state.active,
+                    index=0,
+                    on_change=env_agent_choice_callback,
+                    key="agent_choice_1",
+                )
+            with agent_col2:
+                agent_choice_2 = st.selectbox(
+                    "Choose the second agent:",
+                    agent_list_2.keys(),
+                    disabled=st.session_state.active,
+                    index=1,
+                    on_change=env_agent_choice_callback,
+                    key="agent_choice_2",
+                )
+            if agent_choice_1 == agent_choice_2:
+                st.warning(
+                    "The two agents cannot be the same. Please select different agents."
+                )
+                st.stop()
 
-        model_col_1, model_col_2 = st.columns(2)
-        with model_col_1:
-            st.selectbox(
-                "Choose a model:",
-                MODEL_LIST,
-                disabled=st.session_state.active,
-                index=0,
-                on_change=other_choice_callback,
-                key="agent1_model_choice",
-            )
-        with model_col_2:
-            st.selectbox(
-                "Choose a model for agent 2:",
-                MODEL_LIST,
-                disabled=st.session_state.active,
-                index=0,
-                on_change=other_choice_callback,
-                key="agent2_model_choice",
-            )
+            model_col_1, model_col_2 = st.columns(2)
+            with model_col_1:
+                st.selectbox(
+                    "Choose a model:",
+                    MODEL_LIST,
+                    disabled=st.session_state.active,
+                    index=0,
+                    on_change=other_choice_callback,
+                    key="agent1_model_choice",
+                )
+            with model_col_2:
+                st.selectbox(
+                    "Choose a model for agent 2:",
+                    MODEL_LIST,
+                    disabled=st.session_state.active,
+                    index=0,
+                    on_change=other_choice_callback,
+                    key="agent2_model_choice",
+                )
 
-    with st.expander("Check your social task!", expanded=True):
-        agent_infos = compose_agent_messages(agents=st.session_state.agents)
-        env_info, goals_info = compose_env_messages(env=st.session_state.env)
+        with st.expander("Check your social task!", expanded=True):
+            agent_infos = compose_agent_messages(agents=st.session_state.agents)
+            env_info, goals_info = compose_env_messages(env=st.session_state.env)
 
-        if st.session_state.editable:
-            st.text_area(
-                label="Change the scenario here:",
-                value=f"""{env_info}""",
-                height=50,
-                on_change=edit_callback,
-                key="edited_scenario",
-                disabled=st.session_state.active or not st.session_state.editable,
-                args=("edited_scenario",),
-            )
+            if st.session_state.editable:
+                st.text_area(
+                    label="Change the scenario here:",
+                    value=f"""{env_info}""",
+                    height=50,
+                    on_change=edit_callback,
+                    key="edited_scenario",
+                    disabled=st.session_state.active or not st.session_state.editable,
+                    args=("edited_scenario",),
+                )
 
-            # agent: first name, last name, age, occupation, public info, personality and values, secret
-            # use separate text_area for each info
-            agent_list = list(st.session_state.agents.values())
-            agent_traits = [
-                "first_name",
-                "last_name",
-                "age",
-                "occupation",
-                "personality_and_values",
-                "public_info",
-                "secret",
-            ]
-            agent_traits = [
-                ["first_name", "last_name", "age"],
-                ["occupation", "personality_and_values"],
-                ["public_info", "secret"],
-            ]
+                # agent: first name, last name, age, occupation, public info, personality and values, secret
+                # use separate text_area for each info
+                agent_list = list(st.session_state.agents.values())
+                agent_traits = [
+                    "first_name",
+                    "last_name",
+                    "age",
+                    "occupation",
+                    "personality_and_values",
+                    "public_info",
+                    "secret",
+                ]
+                agent_traits = [
+                    ["first_name", "last_name", "age"],
+                    ["occupation", "personality_and_values"],
+                    ["public_info", "secret"],
+                ]
 
-            for agent_idx, agent in enumerate(agent_list):
-                st.markdown(f"**Agent {agent_idx + 1} information**")
-                # basic_info_cols = st.columns([1, 1, 1, 1, 3, 3, 3])
-                for trait_set in agent_traits:
-                    basic_info_cols = st.columns(len(trait_set))
-                    for idx, (trait_name, trait_col) in enumerate(
-                        zip(trait_set, basic_info_cols)
-                    ):
-                        with trait_col:
-                            st.text_area(
-                                label=f"{trait_name.capitalize()}",
-                                value=f"""{getattr(agent_list[agent_idx].profile, trait_name)}""",
-                                height=5,
-                                disabled=st.session_state.active
-                                or not st.session_state.editable,
-                                on_change=agent_edit_callback_finegrained,
-                                key=f"edited_agent-{agent_idx}-{trait_name}",
-                                args=(
-                                    f"edited_agent-{agent_idx}-{trait_name}",
-                                    agent_traits,
-                                ),
-                            )
+                for agent_idx, agent in enumerate(agent_list):
+                    st.markdown(f"**Agent {agent_idx + 1} information**")
+                    # basic_info_cols = st.columns([1, 1, 1, 1, 3, 3, 3])
+                    for trait_set in agent_traits:
+                        basic_info_cols = st.columns(len(trait_set))
+                        for idx, (trait_name, trait_col) in enumerate(
+                            zip(trait_set, basic_info_cols)
+                        ):
+                            with trait_col:
+                                st.text_area(
+                                    label=f"{trait_name.capitalize()}",
+                                    value=f"""{getattr(agent_list[agent_idx].profile, trait_name)}""",
+                                    height=5,
+                                    disabled=st.session_state.active
+                                    or not st.session_state.editable,
+                                    on_change=agent_edit_callback_finegrained,
+                                    key=f"edited_agent-{agent_idx}-{trait_name}",
+                                    args=(
+                                        f"edited_agent-{agent_idx}-{trait_name}",
+                                        agent_traits,
+                                    ),
+                                )
 
-            st.markdown("Goals")
-            agent1_goal_col, agent2_goal_col = st.columns(2)
-            agent_goal_cols = [agent1_goal_col, agent2_goal_col]
-            for agent_idx, goal_info in enumerate(goals_info):
-                agent_goal_col = agent_goal_cols[agent_idx]
-                with agent_goal_col:
-                    st.text_area(
-                        label=f"Change the goal for Agent {agent_idx + 1} here:",
-                        value=f"""{goal_info}""",
-                        height=150,
-                        key=f"edited_goal_{agent_idx}",
-                        on_change=edit_callback,
-                        disabled=st.session_state.active
-                        or not st.session_state.editable,
-                        args=(f"edited_goal_{agent_idx}",),
-                    )
-        else:
-            st.markdown(
-                f"""**Scenario:** {env_info}""",
-                unsafe_allow_html=True,
-            )
+                st.markdown("Goals")
+                agent1_goal_col, agent2_goal_col = st.columns(2)
+                agent_goal_cols = [agent1_goal_col, agent2_goal_col]
+                for agent_idx, goal_info in enumerate(goals_info):
+                    agent_goal_col = agent_goal_cols[agent_idx]
+                    with agent_goal_col:
+                        st.text_area(
+                            label=f"Change the goal for Agent {agent_idx + 1} here:",
+                            value=f"""{goal_info}""",
+                            height=150,
+                            key=f"edited_goal_{agent_idx}",
+                            on_change=edit_callback,
+                            disabled=st.session_state.active
+                            or not st.session_state.editable,
+                            args=(f"edited_goal_{agent_idx}",),
+                        )
+            else:
+                st.markdown(
+                    f"""**Scenario:** {env_info}""",
+                    unsafe_allow_html=True,
+                )
 
-            agent1_col, agent2_col = st.columns(2)
-            agent_cols = [agent1_col, agent2_col]
-            for agent_idx, agent_info in enumerate(agent_infos):
-                agent_col = agent_cols[agent_idx]
-                with agent_col:
-                    st.markdown(
-                        f"""**Agent {agent_idx + 1} Background:** {agent_info}""",
-                        unsafe_allow_html=True,
-                    )
+                agent1_col, agent2_col = st.columns(2)
+                agent_cols = [agent1_col, agent2_col]
+                for agent_idx, agent_info in enumerate(agent_infos):
+                    agent_col = agent_cols[agent_idx]
+                    with agent_col:
+                        st.markdown(
+                            f"""**Agent {agent_idx + 1} Background:** {agent_info}""",
+                            unsafe_allow_html=True,
+                        )
 
-            agent1_goal_col, agent2_goal_col = st.columns(2)
-            agent_goal_cols = [agent1_goal_col, agent2_goal_col]
-            for agent_idx, goal_info in enumerate(goals_info):
-                agent_goal_col = agent_goal_cols[agent_idx]
-                with agent_goal_col:
-                    st.markdown(
-                        f"""**Agent {agent_idx + 1} Goal:** {goal_info}""",
-                    )
+                agent1_goal_col, agent2_goal_col = st.columns(2)
+                agent_goal_cols = [agent1_goal_col, agent2_goal_col]
+                for agent_idx, goal_info in enumerate(goals_info):
+                    agent_goal_col = agent_goal_cols[agent_idx]
+                    with agent_goal_col:
+                        st.markdown(
+                            f"""**Agent {agent_idx + 1} Goal:** {goal_info}""",
+                        )
 
     def activate() -> None:
         st.session_state.active = True

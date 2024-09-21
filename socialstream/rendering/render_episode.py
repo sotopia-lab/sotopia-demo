@@ -4,7 +4,10 @@ import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 from sotopia.envs.parallel import render_text_for_agent, render_text_for_environment
 
-from socialstream.rendering_utils import render_for_humans
+from socialstream.rendering_utils import (
+    _agent_profile_to_friendabove_self,
+    render_for_humans,
+)
 from socialstream.utils import get_full_name, get_preview, initialize_session_state
 
 role_mapping = {
@@ -84,6 +87,17 @@ def rendering_demo() -> None:
         st.markdown(
             f"**Scenario**: { render_text_for_environment(environment.scenario)}"
         )
+
+        info_col1, info_col2 = st.columns(2)
+        info_1 = _agent_profile_to_friendabove_self(agents[0], agent_id=1)
+        info_2 = _agent_profile_to_friendabove_self(agents[1], agent_id=2)
+        with info_col1:
+            with st.expander(f"**{agent_names[0]}'s Info:** {get_preview(info_1)}"):
+                st.markdown(info_1)
+
+        with info_col2:
+            with st.expander(f"**{agent_names[1]}'s Info:** {get_preview(info_2)}"):
+                st.markdown(info_2)
 
         goal_col1, goal_col2 = st.columns(2)
         with goal_col1:

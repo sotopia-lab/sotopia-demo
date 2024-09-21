@@ -24,8 +24,20 @@ def update_database_callback() -> None:
 
 
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"][aria-expanded="true"]{
+        max-width: 2500px;
+    }
+    """,
+    unsafe_allow_html=True,
+)  # set the sidebar width to be wider
+
 DISPLAY_MODE = "Display Episodes"
-CHAT_OMNISCIENT_MODE = "Chat with Model"
+CHAT_OMNISCIENT_MODE = "Chat with Model (Omniscient)"
+CHAT_NORMAL_MODE = "Chat with Model (Asymmetric)"
+
 if "DEFAULT_DB_URL" not in st.session_state:
     st.session_state.DEFAULT_DB_URL = os.environ.get("REDIS_OM_URL", "")
     st.session_state.current_database_url = st.session_state.DEFAULT_DB_URL
@@ -54,8 +66,10 @@ new_database_url = st.sidebar.text_input(
 #     print("Actual DB URL: ", actual_database_url)
 #     st.rerun()
 
-option = st.sidebar.radio("Function", (CHAT_OMNISCIENT_MODE, DISPLAY_MODE))
+option = st.sidebar.radio("Function", (DISPLAY_MODE, CHAT_OMNISCIENT_MODE))
 if option == DISPLAY_MODE:
     rendering_demo()
+# elif option == CHAT_NORMAL_MODE:
+#     pass
 elif option == CHAT_OMNISCIENT_MODE:
     chat_demo_omniscient()
