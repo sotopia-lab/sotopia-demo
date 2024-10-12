@@ -70,9 +70,12 @@ option = st.sidebar.radio(
     "Function", (DISPLAY_MODE, CHAT_SIMPLE_MODE, CHAT_OMNISCIENT_MODE)
 )
 if option == DISPLAY_MODE:
+    st.session_state.mode = "display"
     rendering_demo()
 elif option == CHAT_SIMPLE_MODE:
     st.session_state.editable = False
+    st.session_state.mode = "simple"
     chat_demo_simple()
 elif option == CHAT_OMNISCIENT_MODE:
+    st.session_state.mode = "omniscient"
     chat_demo_omniscient()

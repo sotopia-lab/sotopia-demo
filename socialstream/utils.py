@@ -37,6 +37,7 @@ MODEL_LIST = [
     "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
     HUMAN_MODEL_NAME,
 ]
+DEFAULT_MODEL = "gpt-4o-mini"
 
 
 class ActionState_v0:
@@ -152,7 +153,7 @@ def initialize_session_state(force_reload: bool = False) -> None:
         st.session_state.agents = None
         st.session_state.environment_messages = None
         st.session_state.messages = []
-        st.session_state.agent_models = ["gpt-4o-mini", "gpt-4o-mini"]
+        st.session_state.agent_models = [DEFAULT_MODEL, DEFAULT_MODEL]
         st.session_state.evaluator_model = "gpt-4o"
         st.session_state.editable = False
         st.session_state.human_agent_idx = 0
@@ -167,6 +168,8 @@ def initialize_session_state(force_reload: bool = False) -> None:
             agent_names=[],
             reset_agents=True,
         )
+
+        st.session_state.human_agent_selection = "Agent 1"
 
     if "all_codenames" not in st.session_state or force_reload:
         codename_pk_mapping = {

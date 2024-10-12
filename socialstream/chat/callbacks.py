@@ -3,6 +3,7 @@ from sotopia.database import AgentProfile, EnvironmentProfile
 
 from socialstream.rendering_utils import get_public_info, get_secret_info
 from socialstream.utils import (
+    DEFAULT_MODEL,
     HUMAN_MODEL_NAME,
     EnvAgentProfileCombo,
     set_from_env_agent_profile_combo,
@@ -14,11 +15,8 @@ def other_choice_callback(simple_mode=False) -> None:
     if simple_mode:
         human_selection = st.session_state.human_agent_selection
         human_idx = int(human_selection.split()[-1]) - 1
-        st.session_state.agent_models = ["", ""]
+        st.session_state.agent_models = [DEFAULT_MODEL, DEFAULT_MODEL]
         st.session_state.agent_models[human_idx] = HUMAN_MODEL_NAME
-        st.session_state.agent_models[1 - human_idx] = (
-            st.session_state.model_other_agent_selection
-        )
 
     else:
         st.session_state.agent_models = [

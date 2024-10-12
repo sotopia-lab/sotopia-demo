@@ -76,78 +76,61 @@ def chat_demo() -> None:
                     f"""**Scenario Description:** {st.session_state.env_description_mapping[st.session_state.scenario_choice]}""",
                     unsafe_allow_html=True,
                 )
-                
 
-            agent_col1, agent_col2 = st.columns(2)
-            with agent_col1:
-                agent_choice_1 = st.selectbox(
-                    "Choose Agent 1:",
-                    agent_list_1.keys(),
-                    disabled=st.session_state.active,
-                    index=0,
-                    on_change=env_agent_choice_callback,
-                    key="agent_choice_1",
-                )
-            with agent_col2:
-                agent_choice_2 = st.selectbox(
-                    "Choose Agent 2:",
-                    agent_list_2.keys(),
-                    disabled=st.session_state.active,
-                    index=1,
-                    on_change=env_agent_choice_callback,
-                    key="agent_choice_2",
-                )
-            if agent_choice_1 == agent_choice_2:
-                st.warning(
-                    "The two agents cannot be the same. Please select different agents."
-                )
-                st.stop()
-                
-            human_selection_col = st.selectbox(
-                "Choose which agent you want to be: ",
-                target_agents,
+            def random_select_callback():
+                import random
+
+                agent_choice_1 = random.choice(list(agent_list_1.keys()))
+                agent_choice_2 = random.choice(list(agent_list_2.keys()))
+                while agent_choice_1 == agent_choice_2:
+                    agent_choice_2 = random.choice(list(agent_list_2.keys()))
+                st.session_state.agent_choice_1 = agent_choice_1
+                st.session_state.agent_choice_2 = agent_choice_2
+                env_agent_choice_callback()
+
+                human_agent = random.choice(target_agents)
+                st.session_state.human_agent_selection = human_agent
+                other_choice_callback(True)
+
+            # when pressing the button, randomly select agents
+            random_select_btn = st.button(
+                "Randomly select agents",
                 disabled=st.session_state.active,
-                index=0,
-                on_change=other_choice_callback,
-                key="human_agent_selection",
-                args=(True,), # simple_mode
+                on_click=random_select_callback,
             )
-            
-            model_selection_col = st.selectbox(
-                "Choose which model you want to use for the other agent: ",
-                MODEL_LIST,
-                disabled=st.session_state.active,
-                index=0,
-                on_change=other_choice_callback,
-                key="model_other_agent_selection",
-                args=(True,),
-            )
-            
-        human_agent_idx = 0 if st.session_state.human_agent_selection == "Agent 1" else 1
+
+        human_agent_idx = (
+            0 if st.session_state.human_agent_selection == "Agent 1" else 1
+        )
         agents = st.session_state.agents
         target_agent_viewer = [human_agent_idx + 1 for _ in range(len(agents))]
-        agent_infos = compose_agent_messages(agents=agents, target_agent_viewer=target_agent_viewer)
+        agent_infos = compose_agent_messages(
+            agents=agents, target_agent_viewer=target_agent_viewer
+        )
         env_info, goals_info = compose_env_messages(env=st.session_state.env)
-        
-        with st.expander("Your Information:", expanded=True):
+        agent_name = list(agents.keys())[human_agent_idx]
+
+        with st.expander(
+            f"You Are **{st.session_state.human_agent_selection}, {agent_name}**",
+            expanded=True,
+        ):
             st.markdown(
                 f"""**Scenario:** {env_info}""",
                 unsafe_allow_html=True,
             )
-            agent_name = list(agents.keys())[human_agent_idx]
             st.markdown(
-                f"""**Your are {agent_name}. Background:** {agent_infos[human_agent_idx]}""",
+                f"""**Your Background:** {agent_infos[human_agent_idx]}""",
             )
             st.markdown(
                 f"""**Your Goal:** {goals_info[human_agent_idx]}""",
             )
-            
-        with st.expander("Your Partner Information", expanded=True):
+
+        partner_model = st.session_state.agent_models[1 - human_agent_idx]
+        with st.expander(f"Your Partner (Model {partner_model}): ", expanded=True):
             target_agent_name = list(agents.keys())[1 - human_agent_idx]
             st.markdown(
                 f"""**Your partner is {target_agent_name}. Background:** {agent_infos[1 - human_agent_idx]}""",
             )
-            
 
     def activate() -> None:
         st.session_state.active = True
