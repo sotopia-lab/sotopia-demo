@@ -69,13 +69,18 @@ new_database_url = st.sidebar.text_input(
 option = st.sidebar.radio(
     "Function", (DISPLAY_MODE, CHAT_SIMPLE_MODE, CHAT_OMNISCIENT_MODE)
 )
+if option != st.session_state.get("mode", None):
+    # when switching between modes, reset the active agent
+    if "active" in st.session_state:
+        del st.session_state["active"]
+
 if option == DISPLAY_MODE:
-    st.session_state.mode = "display"
+    st.session_state.mode = DISPLAY_MODE
     rendering_demo()
 elif option == CHAT_SIMPLE_MODE:
     st.session_state.editable = False
-    st.session_state.mode = "simple"
+    st.session_state.mode = CHAT_SIMPLE_MODE
     chat_demo_simple()
 elif option == CHAT_OMNISCIENT_MODE:
-    st.session_state.mode = "omniscient"
+    st.session_state.mode = CHAT_OMNISCIENT_MODE
     chat_demo_omniscient()

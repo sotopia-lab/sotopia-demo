@@ -160,9 +160,12 @@ def initialize_session_state(force_reload: bool = False) -> None:
 
         st.session_state.rewards = [0.0, 0.0]
         st.session_state.reasoning = ""
+        st.session_state.agent_choice_1 = get_full_name(all_agents[0])
+        st.session_state.agent_choice_2 = get_full_name(all_agents[1])
+        st.session_state.scenario_choice = all_envs[0].codename
         set_settings(
-            agent_choice_1=get_full_name(all_agents[0]),
-            agent_choice_2=get_full_name(all_agents[1]),
+            agent_choice_1=st.session_state.agent_choice_1,
+            agent_choice_2=st.session_state.agent_choice_2,
             scenario_choice=all_envs[0].codename,
             user_agent_name="PLACEHOLDER",
             agent_names=[],

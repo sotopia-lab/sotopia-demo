@@ -25,7 +25,7 @@ def other_choice_callback(simple_mode=False) -> None:
         ]
 
     st.session_state.editable = st.session_state.get("edit_scenario", None)
-    print("Editable: ", st.session_state.editable)
+    # print("Editable: ", st.session_state.editable)
     agent_choice_1 = st.session_state.agent_choice_1
     agent_choice_2 = st.session_state.agent_choice_2
     set_settings(

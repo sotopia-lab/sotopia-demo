@@ -227,54 +227,54 @@ def chat_demo() -> None:
                             f"""**Agent {agent_idx + 1} Goal:** {goal_info}""",
                         )
 
-    def activate() -> None:
-        st.session_state.active = True
+        def activate() -> None:
+            st.session_state.active = True
 
-    def activate_and_start() -> None:
-        activate()
+        def activate_and_start() -> None:
+            activate()
 
-        env_agent_combo = EnvAgentProfileCombo(
-            env=st.session_state.env.profile,
-            agents=[agent.profile for agent in st.session_state.agents.values()],
-        )
-        set_from_env_agent_profile_combo(
-            env_agent_combo=env_agent_combo, reset_msgs=True
-        )
+            env_agent_combo = EnvAgentProfileCombo(
+                env=st.session_state.env.profile,
+                agents=[agent.profile for agent in st.session_state.agents.values()],
+            )
+            set_from_env_agent_profile_combo(
+                env_agent_combo=env_agent_combo, reset_msgs=True
+            )
 
-    action_taken: bool = False
+        action_taken: bool = False
 
-    def stop_and_eval() -> None:
-        if st.session_state != ActionState.IDLE:
-            st.session_state.state = ActionState.EVALUATION_WAITING
+        def stop_and_eval() -> None:
+            if st.session_state != ActionState.IDLE:
+                st.session_state.state = ActionState.EVALUATION_WAITING
 
-    start_col, stop_col, save_col = st.columns(3)
-    with start_col:
-        start_button = st.button(
-            "Start", disabled=st.session_state.active, on_click=activate_and_start
-        )
-        if start_button:
-            # st.session_state.active = True
-            st.session_state.state = ActionState.AGENT1_WAITING
+        start_col, stop_col, save_col = st.columns(3)
+        with start_col:
+            start_button = st.button(
+                "Start", disabled=st.session_state.active, on_click=activate_and_start
+            )
+            if start_button:
+                # st.session_state.active = True
+                st.session_state.state = ActionState.AGENT1_WAITING
 
-    with stop_col:
-        stop_button = st.button(
-            "Stop", disabled=not st.session_state.active, on_click=stop_and_eval
-        )
-        if stop_button and st.session_state.active:
-            st.session_state.state = ActionState.EVALUATION_WAITING
-            with st.spinner("Evaluating..."):
-                step(user_input="")
-                action_taken = True
+        with stop_col:
+            stop_button = st.button(
+                "Stop", disabled=not st.session_state.active, on_click=stop_and_eval
+            )
+            if stop_button and st.session_state.active:
+                st.session_state.state = ActionState.EVALUATION_WAITING
+                with st.spinner("Evaluating..."):
+                    step(user_input="")
+                    action_taken = True
 
-    with save_col:
-        save_button = st.download_button(
-            label="Save current conversation",
-            file_name="saved_conversation.txt",
-            mime="text/plain",
-            data=save_callback(),
-            disabled=st.session_state.active,
-            # use_container_width=True
-        )
+        with save_col:
+            save_button = st.download_button(
+                label="Save current conversation",
+                file_name="saved_conversation.txt",
+                mime="text/plain",
+                data=save_callback(),
+                disabled=st.session_state.active,
+                # use_container_width=True
+            )
 
     requires_agent_input = (
         st.session_state.state == ActionState.AGENT1_WAITING
@@ -291,6 +291,26 @@ def chat_demo() -> None:
         st.session_state.state == ActionState.AGENT2_WAITING
         and st.session_state.agent_models[1] != HUMAN_MODEL_NAME
     )
+
+    messages = render_messages(
+        env=st.session_state.env,
+        agent_list=list(st.session_state.agents.values()),
+        messages=st.session_state.messages,
+        reasoning=st.session_state.reasoning,
+        rewards=st.session_state.rewards,
+    )
+    tag_for_eval = ["Agent 1", "Agent 2", "General"]
+    chat_history = [
+        message for message in messages if message["role"] not in tag_for_eval
+    ]
+    evaluation = [message for message in messages if message["role"] in tag_for_eval]
+
+    with st.expander("Chat History", expanded=True):
+        streamlit_rendering(chat_history)
+
+    with st.expander("Evaluation"):
+        # a small bug: when there is a agent not saying anything there will be no separate evaluation for that agent
+        streamlit_rendering(evaluation)
 
     with st.form("user_input", clear_on_submit=True):
         user_input = st.text_input("Enter your message here:", key="user_input")
@@ -316,29 +336,9 @@ def chat_demo() -> None:
         with st.spinner("Evaluating..."):
             step()
 
-    messages = render_messages(
-        env=st.session_state.env,
-        agent_list=list(st.session_state.agents.values()),
-        messages=st.session_state.messages,
-        reasoning=st.session_state.reasoning,
-        rewards=st.session_state.rewards,
-    )
-    tag_for_eval = ["Agent 1", "Agent 2", "General"]
-    chat_history = [
-        message for message in messages if message["role"] not in tag_for_eval
-    ]
-    evaluation = [message for message in messages if message["role"] in tag_for_eval]
-
-    with st.expander("Chat History", expanded=True):
-        streamlit_rendering(chat_history)
-
-    with st.expander("Evaluation"):
-        # a small bug: when there is a agent not saying anything there will be no separate evaluation for that agent
-        streamlit_rendering(evaluation)
-
     if action_taken:
-        time.sleep(3)  # sleep for a while to prevent running too fast
-        # BUG if the rerun is too fast then the message is not rendering
+        # time.sleep(0.5)  # sleep for a while to prevent running too fast
+        # BUG if the rerun is too fast then the message is not rendering (seems to be resolved)
         st.rerun()
 
 
