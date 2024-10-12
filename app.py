@@ -2,7 +2,7 @@ import os
 
 import streamlit as st
 
-from socialstream.chat import chat_demo_omniscient
+from socialstream.chat import chat_demo_omniscient, chat_demo_simple
 from socialstream.rendering import rendering_demo
 from socialstream.utils import initialize_session_state, reset_database
 
@@ -35,8 +35,8 @@ st.markdown(
 )  # set the sidebar width to be wider
 
 DISPLAY_MODE = "Display Episodes"
-CHAT_OMNISCIENT_MODE = "Chat with Model (Omniscient)"
-CHAT_NORMAL_MODE = "Chat with Model (Asymmetric)"
+CHAT_SIMPLE_MODE = "Simple Chat"
+CHAT_OMNISCIENT_MODE = "Omniscient Chat & Editable Scenario"
 
 if "DEFAULT_DB_URL" not in st.session_state:
     st.session_state.DEFAULT_DB_URL = os.environ.get("REDIS_OM_URL", "")
@@ -66,10 +66,13 @@ new_database_url = st.sidebar.text_input(
 #     print("Actual DB URL: ", actual_database_url)
 #     st.rerun()
 
-option = st.sidebar.radio("Function", (DISPLAY_MODE, CHAT_OMNISCIENT_MODE))
+option = st.sidebar.radio(
+    "Function", (DISPLAY_MODE, CHAT_SIMPLE_MODE, CHAT_OMNISCIENT_MODE)
+)
 if option == DISPLAY_MODE:
     rendering_demo()
-# elif option == CHAT_NORMAL_MODE:
-#     pass
+elif option == CHAT_SIMPLE_MODE:
+    st.session_state.editable = False
+    chat_demo_simple()
 elif option == CHAT_OMNISCIENT_MODE:
     chat_demo_omniscient()

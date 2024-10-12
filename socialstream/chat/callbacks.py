@@ -3,18 +3,30 @@ from sotopia.database import AgentProfile, EnvironmentProfile
 
 from socialstream.rendering_utils import get_public_info, get_secret_info
 from socialstream.utils import (
+    HUMAN_MODEL_NAME,
     EnvAgentProfileCombo,
     set_from_env_agent_profile_combo,
     set_settings,
 )
 
 
-def other_choice_callback() -> None:
-    st.session_state.agent_models = [
-        st.session_state.agent1_model_choice,
-        st.session_state.agent2_model_choice,
-    ]
-    st.session_state.editable = st.session_state.edit_scenario
+def other_choice_callback(simple_mode=False) -> None:
+    if simple_mode:
+        human_selection = st.session_state.human_agent_selection
+        human_idx = int(human_selection.split()[-1]) - 1
+        st.session_state.agent_models = ["", ""]
+        st.session_state.agent_models[human_idx] = HUMAN_MODEL_NAME
+        st.session_state.agent_models[1 - human_idx] = (
+            st.session_state.model_other_agent_selection
+        )
+
+    else:
+        st.session_state.agent_models = [
+            st.session_state.agent1_model_choice,
+            st.session_state.agent2_model_choice,
+        ]
+
+    st.session_state.editable = st.session_state.get("edit_scenario", None)
     print("Editable: ", st.session_state.editable)
     agent_choice_1 = st.session_state.agent_choice_1
     agent_choice_2 = st.session_state.agent_choice_2
