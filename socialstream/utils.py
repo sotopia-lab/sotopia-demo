@@ -1,8 +1,11 @@
 import asyncio
+import json
+import os
 from functools import wraps
 from typing import Optional, TypedDict, cast
 
 import streamlit as st
+from redis_om import get_redis_connection
 from sotopia.agents import Agents, LLMAgent
 from sotopia.database import (
     AgentProfile,
@@ -34,6 +37,7 @@ MODEL_LIST = [
     "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
     HUMAN_MODEL_NAME,
 ]
+DEFAULT_MODEL = "gpt-4o-mini"
 
 
 class ActionState_v0:
@@ -94,48 +98,52 @@ def async_to_sync(async_func: callable) -> callable:
     return sync_func
 
 
-import json
-
-
 def get_abstract(description: str) -> str:
     return " ".join(description.split()[:50]) + "..."
 
 
 def load_additional_agents() -> list[AgentProfile]:
     data_file = "data/negotiation_agents.json"
+    if not os.path.exists(data_file):
+        return []
     agents = [AgentProfile(**agent_data) for agent_data in json.load(open(data_file))]
     return agents
 
 
 def load_additional_envs() -> list[EnvironmentProfile]:
     data_file = "data/negotiation_scenarios.json"
+    if not os.path.exists(data_file):
+        return []
     envs = [EnvironmentProfile(**env_data) for env_data in json.load(open(data_file))]
     return envs
 
 
 def initialize_session_state(force_reload: bool = False) -> None:
-    all_agents = AgentProfile.find().all()[:10]
-    all_envs = EnvironmentProfile.find().all()[:10]
-    additional_agents = load_additional_agents()
-    additional_envs = load_additional_envs()
-
-    all_agents = additional_agents + all_agents
-    all_envs = additional_envs + all_envs
-
-    st.session_state.agent_mapping = [
-        {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
-    ] * 2
-    st.session_state.env_mapping = {
-        env_profile.codename: env_profile for env_profile in all_envs
-    }
-    st.session_state.env_description_mapping = {
-        env_profile.codename: get_abstract(
-            render_text_for_environment(env_profile.scenario)
-        )
-        for env_profile in all_envs
-    }
-
     if "active" not in st.session_state or force_reload:
+        all_agents = AgentProfile.find().all()[:10]
+        all_envs = EnvironmentProfile.find().all()[:10]
+        additional_agents = load_additional_agents()
+        additional_envs = load_additional_envs()
+
+        all_agents = additional_agents + all_agents
+        all_envs = additional_envs + all_envs
+
+        st.session_state.agent_mapping = [
+            {
+                get_full_name(agent_profile): agent_profile
+                for agent_profile in all_agents
+            }
+        ] * 2
+        st.session_state.env_mapping = {
+            env_profile.codename: env_profile for env_profile in all_envs
+        }
+        st.session_state.env_description_mapping = {
+            env_profile.codename: get_abstract(
+                render_text_for_environment(env_profile.scenario)
+            )
+            for env_profile in all_envs
+        }
+
         st.session_state.active = False
         st.session_state.conversation = []
         st.session_state.background = "Default Background"
@@ -145,21 +153,36 @@ def initialize_session_state(force_reload: bool = False) -> None:
         st.session_state.agents = None
         st.session_state.environment_messages = None
         st.session_state.messages = []
-        st.session_state.agent_models = ["gpt-4o-mini", "gpt-4o-mini"]
+        st.session_state.agent_models = [DEFAULT_MODEL, DEFAULT_MODEL]
         st.session_state.evaluator_model = "gpt-4o"
         st.session_state.editable = False
         st.session_state.human_agent_idx = 0
 
         st.session_state.rewards = [0.0, 0.0]
         st.session_state.reasoning = ""
+        st.session_state.agent_choice_1 = get_full_name(all_agents[0])
+        st.session_state.agent_choice_2 = get_full_name(all_agents[1])
+        st.session_state.scenario_choice = all_envs[0].codename
         set_settings(
-            agent_choice_1=get_full_name(all_agents[0]),
-            agent_choice_2=get_full_name(all_agents[1]),
+            agent_choice_1=st.session_state.agent_choice_1,
+            agent_choice_2=st.session_state.agent_choice_2,
             scenario_choice=all_envs[0].codename,
             user_agent_name="PLACEHOLDER",
             agent_names=[],
             reset_agents=True,
         )
+
+        st.session_state.human_agent_selection = "Agent 1"
+
+    if "all_codenames" not in st.session_state or force_reload:
+        codename_pk_mapping = {
+            env.codename: env.pk for env in EnvironmentProfile.find().all()
+        }
+        st.session_state.all_codenames = codename_pk_mapping
+        st.session_state.current_episodes = EpisodeLog.find(
+            EpisodeLog.environment
+            == codename_pk_mapping[list(codename_pk_mapping.keys())[0]]
+        ).all()
 
 
 def set_from_env_agent_profile_combo(
@@ -373,5 +396,19 @@ def step(user_input: str | None = None) -> None:
     done = all(terminated.values())
 
 
-# def _agent_profile_to_friendabove_self(profile: AgentProfile, agent_id: int) -> str:
-#     return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}. Big five type: {profile.big_five}</p>"
+def get_preview(target: str, length: int = 20) -> str:
+    return " ".join(target.split()[:length]) + "..."
+
+
+def reset_database(db_url: str) -> None:
+    EpisodeLog._meta.database = get_redis_connection(url=db_url)
+    EpisodeLog.Meta.database = get_redis_connection(url=db_url)
+
+    AgentProfile._meta.database = get_redis_connection(url=db_url)
+    AgentProfile.Meta.database = get_redis_connection(url=db_url)
+
+    EnvironmentProfile._meta.database = get_redis_connection(url=db_url)
+    EnvironmentProfile.Meta.database = get_redis_connection(url=db_url)
+
+    EnvAgentComboStorage._meta.database = get_redis_connection(url=db_url)
+    EnvAgentComboStorage.Meta.database = get_redis_connection(url=db_url)

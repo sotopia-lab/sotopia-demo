@@ -162,20 +162,26 @@ def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
 
     for item in messages_for_rendering:
         item["content"] = item["content"].replace("$", "\\$")
-    # print("Replaced content", messages_for_rendering)
 
     return messages_for_rendering
 
 
-def compose_agent_messages(agents: Agents) -> list[str]:
+def compose_agent_messages(
+    agents: Agents, target_agent_viewer: list[int] | None = None
+) -> list[str]:
+    if target_agent_viewer is None:
+        target_agent_viewer = [idx + 1 for idx in range(len(agents))]
+
     agent_to_render = [
         render_text_for_agent(
             raw_text=_agent_profile_to_friendabove_self(
-                agent.profile, agent_id, display_name=False
+                agent.profile, agent_id + 1, display_name=False
             ),
-            agent_id=agent_id,
+            agent_id=target_agent_id,
         )
-        for agent_id, agent in enumerate(agents.values())
+        for agent_id, (target_agent_id, agent) in enumerate(
+            zip(target_agent_viewer, agents.values())
+        )
     ]
     return agent_to_render
 
