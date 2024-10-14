@@ -1,4 +1,5 @@
 import asyncio
+import glob
 import json
 import os
 from functools import wraps
@@ -103,18 +104,28 @@ def get_abstract(description: str) -> str:
 
 
 def load_additional_agents() -> list[AgentProfile]:
-    data_file = "data/negotiation_agents.json"
-    if not os.path.exists(data_file):
-        return []
-    agents = [AgentProfile(**agent_data) for agent_data in json.load(open(data_file))]
+    data_file_pattern = "data/*_agents.json"
+    all_files = glob.glob(data_file_pattern)
+    agents = []
+    for data_file in all_files:
+        if not os.path.exists(data_file):
+            return []
+        agents.extend(
+            [AgentProfile(**agent_data) for agent_data in json.load(open(data_file))]
+        )
     return agents
 
 
 def load_additional_envs() -> list[EnvironmentProfile]:
-    data_file = "data/negotiation_scenarios.json"
-    if not os.path.exists(data_file):
-        return []
-    envs = [EnvironmentProfile(**env_data) for env_data in json.load(open(data_file))]
+    data_file_pattern = "data/*_scenarios.json"
+    all_files = glob.glob(data_file_pattern)
+    envs = []
+    for data_file in all_files:
+        if not os.path.exists(data_file):
+            return []
+        envs.extend(
+            [EnvironmentProfile(**env_data) for env_data in json.load(open(data_file))]
+        )
     return envs
 
 
