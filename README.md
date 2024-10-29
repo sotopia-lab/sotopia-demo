@@ -19,7 +19,9 @@ poetry install
 
 ## Usage
 streamlit run app.py
-Before that you should specify a Redis database by `conda env config vars set REDIS_OM_URL={YOUR_URL}`
+
+Before that you should specify a Redis database by `conda env config vars set REDIS_OM_URL={YOUR_URL}`. You can also 1. Specify a new database in the sidebar, or 2. Include your temporary scenario in data with suffix `_agents.json` and `_scenarios.json`.
+
 
 ### Chat
 First choose the agents (two agents cannot be the same), scenarios and the agent you are going to be, then click `start` to start interaction. When you want to leave and get evaluated, click `stop` to start evaluation.
