@@ -1,8 +1,9 @@
 import asyncio
 import json
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Optional
 
-import aiohttp
+import requests
 import streamlit as st
 import websockets
 
@@ -12,21 +13,6 @@ from socialstream.utils import get_abstract
 
 def compose_agent_names(agent_dict: dict[Any]) -> str:
     return f"{agent_dict['first_name']} {agent_dict['last_name']}"
-
-
-# async def get_scenarios():
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get("http://localhost:8800/scenarios") as resp:
-#             scenarios = await resp.json()
-#     return {scenario["codename"]: scenario for scenario in scenarios}
-
-# async def get_agents() -> tuple[dict[str, dict[Any]], dict[str, dict[Any]]]:
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get("http://localhost:8800/agents") as resp:
-#             agents = await resp.json()
-#     return {compose_agent_names(agent): agent for agent in agents}, {compose_agent_names(agent): agent for agent in agents}
-
-import requests
 
 
 def get_scenarios():
@@ -45,139 +31,213 @@ def get_agents() -> tuple[dict[str, dict[Any]], dict[str, dict[Any]]]:
     }
 
 
+class WebSocketManager:
+    def __init__(self, url: str):
+        self.url = url
+        self.websocket: Optional[websockets.WebSocketClientProtocol] = None
+
+    async def connect(self):
+        try:
+            self.websocket = await websockets.connect(self.url)
+            return True
+        except Exception as e:
+            print(f"Connection error: {e}")
+            return False
+
+    async def disconnect(self):
+        if self.websocket:
+            await self.websocket.close()
+            self.websocket = None
+
+    async def send_message(self, message: dict):
+        if self.websocket:
+            await self.websocket.send(json.dumps(message))
+        else:
+            print("No active websocket connection")
+
+    async def receive_message(self):
+        if not self.websocket:
+            return None
+        try:
+            message = await self.websocket.recv()
+            return json.loads(message)
+        except websockets.exceptions.ConnectionClosed:
+            return None
+        except Exception as e:
+            print(f"Error receiving message: {e}")
+            return None
+
+    async def start_simulation(self, scenario_id: str, agent_ids: list[str]):
+        await self.send_message(
+            {
+                "type": "START_SIM",
+                "data": {
+                    "env_id": scenario_id,
+                    "agent_ids": agent_ids,
+                },
+            }
+        )
+
+    async def stop_simulation(self):
+        await self.send_message({"type": "FINISH_SIM", "data": ""})
+
+
 def initialize_session_state():
     if "active" not in st.session_state:
+        # Initialize base state
         st.session_state.scenarios = get_scenarios()
         st.session_state.agent_list_1, st.session_state.agent_list_2 = get_agents()
-        # use the first item in the list as the default choice
+
+        # Use first items as default choices
         st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
         st.session_state.agent_choice_1 = list(st.session_state.agent_list_1.keys())[0]
         st.session_state.agent_choice_2 = list(st.session_state.agent_list_2.keys())[0]
-        st.session_state.active = False
-        st.session_state.messages = []
 
+        # Initialize websocket manager and message list
+        st.session_state.messages = []
+        st.session_state.websocket_manager = WebSocketManager(
+            "ws://localhost:8800/ws/simulation?token=demo-token"
+        )
+
+        # Set initial active state
+        st.session_state.active = False
         print("Session state initialized")
 
 
-def chat_demo() -> None:
+def chat_demo():
     initialize_session_state()
 
+    # Setup UI
     with st.container():
-        with st.expander("Create your scenario!", expanded=True):
+        # Scenario and Agent Selection
+        with st.expander("Simulation Setup", expanded=True):
             scenario_col, scenario_desc_col = st.columns(2)
             with scenario_col:
                 st.selectbox(
                     "Choose a scenario:",
                     st.session_state.scenarios.keys(),
-                    disabled=st.session_state.active,
-                    index=0,
                     key="scenario_choice",
+                    disabled=st.session_state.active,
                 )
 
             with scenario_desc_col:
                 st.markdown(
-                    f"""**Scenario Description:** {get_abstract(st.session_state.scenarios[st.session_state.scenario_choice]["scenario"])}""",
+                    f"""**Description:** {get_abstract(st.session_state.scenarios[st.session_state.scenario_choice]["scenario"])}""",
                     unsafe_allow_html=True,
                 )
-
-            def agent_choice_callback():
-                if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
-                    st.warning("Please select different agents.")
 
             st.selectbox(
                 "Choose Agent 1:",
                 st.session_state.agent_list_1.keys(),
-                disabled=st.session_state.active,
-                index=0,
-                on_change=agent_choice_callback,
                 key="agent_choice_1",
+                disabled=st.session_state.active,
             )
             st.selectbox(
                 "Choose Agent 2:",
                 st.session_state.agent_list_2.keys(),
-                disabled=st.session_state.active,
-                index=0,
-                on_change=agent_choice_callback,
                 key="agent_choice_2",
+                disabled=st.session_state.active,
             )
 
-        # Start simulation
-        def start_simulation():
-            st.session_state.active = True
-            asyncio.run(run_simulation())
+        # Control Buttons
+        col1, col2, col3 = st.columns([1, 1, 3])
 
-        st.button(
-            "Start Simulation",
-            on_click=start_simulation,
-            disabled=st.session_state.active,
-        )
-        simulation_status_placeholder = st.empty()
+        def set_active(value: bool):
+            st.session_state.active = value
+
         chat_history_container = st.empty()
 
         async def run_simulation():
-            async with websockets.connect(
-                "ws://localhost:8800/ws/simulation?token=demo-token"
-            ) as websocket:
-                await websocket.send(
-                    json.dumps(
-                        {
-                            "type": "START_SIM",
-                            "data": {
-                                "env_id": st.session_state.scenarios[
-                                    st.session_state.scenario_choice
-                                ]["pk"],
-                                "agent_ids": [
-                                    st.session_state.agent_list_1[
-                                        st.session_state.agent_choice_1
-                                    ]["pk"],
-                                    st.session_state.agent_list_2[
-                                        st.session_state.agent_choice_2
-                                    ]["pk"],
-                                ],
-                            },
-                        }
-                    )
+            try:
+                # Connect
+                await st.session_state.websocket_manager.connect()
+
+                # Start simulation
+                await st.session_state.websocket_manager.start_simulation(
+                    st.session_state.scenarios[st.session_state.scenario_choice]["pk"],
+                    [
+                        st.session_state.agent_list_1[st.session_state.agent_choice_1][
+                            "pk"
+                        ],
+                        st.session_state.agent_list_2[st.session_state.agent_choice_2][
+                            "pk"
+                        ],
+                    ],
                 )
 
                 while st.session_state.active:
-                    msg = await websocket.recv()
-                    msg_data = json.loads(msg)
-                    print("Received message: ", msg_data)
+                    message = await st.session_state.websocket_manager.receive_message()
+                    if message is None:
+                        continue
+                    print("Received message", message)
 
-                    if msg_data["type"] == "END_SIM":
-                        st.session_state.active = False
-                    elif msg_data["type"] == "SERVER_MSG":
-                        message = messageForRendering(
-                            role=msg_data["data"]["role"],
-                            content=msg_data["data"]["content"],
-                            type=msg_data["data"]["type"],
+                    if message["type"] == "END_SIM":
+                        set_active(False)
+                        break
+
+                    if message["type"] == "SERVER_MSG":
+                        st.session_state.messages.append(
+                            messageForRendering(
+                                role=message["data"]["role"],
+                                content=message["data"]["content"],
+                                type=message["data"]["type"],
+                            )
                         )
-                        st.session_state.messages.append(message)
 
                         with chat_history_container.container():
                             streamlit_rendering(
-                                st.session_state.messages,
+                                messages=st.session_state.messages,
                                 agent_names=[
                                     st.session_state.agent_choice_1,
                                     st.session_state.agent_choice_2,
                                 ],
                             )
 
+                    if st.session_state.stop_sim:
+                        print("Stopping simulation")
+                        await st.session_state.websocket_manager.stop_simulation()
+                        st.session_state.stop_sim = False
+
+            finally:
+                await st.session_state.websocket_manager.disconnect()
+
+        def start_callback():
+            if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
+                st.error("Please select different agents")
+            else:
+                st.session_state.active = True
+                st.session_state.stop_sim = False
+                st.session_state.messages = []
+
+        def stop_callback():
+            st.session_state.stop_sim = True
+
+        with col1:
+            st.button(
+                "Start Simulation",
+                disabled=st.session_state.active,
+                on_click=start_callback,
+            )
+
+        with col2:
+            st.button(
+                "Stop Simulation",
+                disabled=not st.session_state.active,
+                on_click=stop_callback,
+            )
+
         if st.session_state.active:
-            simulation_status_placeholder.info("Simulation in progress...")
+            asyncio.run(run_simulation())
+            st.rerun()
 
         with chat_history_container.container():
             streamlit_rendering(
-                st.session_state.messages,
+                messages=st.session_state.messages,
                 agent_names=[
                     st.session_state.agent_choice_1,
                     st.session_state.agent_choice_2,
                 ],
             )
-
-        # if st.session_state.active:
-        #     st.info("Simulation in progress...")
-        #     st.experimental_rerun()
 
 
 def streamlit_rendering(messages: list[messageForRendering], agent_names) -> None:
@@ -188,10 +248,7 @@ def streamlit_rendering(messages: list[messageForRendering], agent_names) -> Non
     }
 
     agent_names = [agent1_name, agent2_name]
-    avatar_mapping = {
-        agent_name: "🤖" for idx, agent_name in enumerate(agent_names)
-    }  # TODO maybe change the avatar because all bot/human will cause confusion
-
+    avatar_mapping = {agent_name: "🤖" for idx, agent_name in enumerate(agent_names)}
     role_mapping = {
         "Background Info": "background",
         "System": "info",
@@ -215,7 +272,8 @@ def streamlit_rendering(messages: list[messageForRendering], agent_names) -> Non
             try:
                 content = json.loads(content)
             except Exception as e:
-                print(e)
+                print("Error in parsing JSON content", e)
+                print("Content:", content)
 
         with st.chat_message(role, avatar=avatar_mapping.get(role, None)):
             if isinstance(content, dict):

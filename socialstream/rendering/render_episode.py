@@ -8,7 +8,12 @@ from socialstream.rendering_utils import (
     _agent_profile_to_friendabove_self,
     render_for_humans,
 )
-from socialstream.utils import get_full_name, get_preview, initialize_session_state
+from socialstream.utils import (
+    format_for_markdown,
+    get_full_name,
+    get_preview,
+    initialize_session_state,
+)
 
 role_mapping = {
     "Background Info": "background",
@@ -62,6 +67,7 @@ def rendering_demo() -> None:
                 render_text_for_agent(agent_goal, agent_id)
                 for agent_id, agent_goal in enumerate(environment.agent_goals)
             ]
+            agent_goals = [format_for_markdown(goal) for goal in agent_goals]
 
             avatar_mapping = {
                 agent_names[0]: "👤",
@@ -91,8 +97,12 @@ def rendering_demo() -> None:
             )
 
             info_col1, info_col2 = st.columns(2)
-            info_1 = _agent_profile_to_friendabove_self(agents[0], agent_id=1)
-            info_2 = _agent_profile_to_friendabove_self(agents[1], agent_id=2)
+            info_1 = format_for_markdown(
+                _agent_profile_to_friendabove_self(agents[0], agent_id=1)
+            )
+            info_2 = format_for_markdown(
+                _agent_profile_to_friendabove_self(agents[1], agent_id=2)
+            )
             with info_col1:
                 with st.expander(f"**{agent_names[0]}'s Info:** {get_preview(info_1)}"):
                     st.markdown(info_1)

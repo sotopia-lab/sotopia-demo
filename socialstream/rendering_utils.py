@@ -9,6 +9,8 @@ from sotopia.envs.parallel import (
 )
 from sotopia.messages import Message
 
+from socialstream.utils import format_for_markdown
+
 
 class messageForRendering(TypedDict):
     role: str
@@ -46,8 +48,8 @@ def _map_gender_to_adj(gender: str) -> str:
 
 def compose_env_messages(env: ParallelSotopiaEnv) -> tuple[str, list[str]]:
     env_profile = env.profile
-    env_to_render = env_profile.scenario
-    goals_to_render = env_profile.agent_goals
+    env_to_render = format_for_markdown(env_profile.scenario)
+    goals_to_render = [format_for_markdown(goal) for goal in env_profile.agent_goals]
 
     return env_to_render, goals_to_render
 
@@ -161,7 +163,7 @@ def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
         )
 
     for item in messages_for_rendering:
-        item["content"] = item["content"].replace("$", "\\$")
+        item["content"] = format_for_markdown(item["content"])
 
     return messages_for_rendering
 
@@ -207,6 +209,11 @@ def render_messages(
         rewards_prompt="",
     )
     rendered_messages = render_for_humans(epilog)
+    # deal with $ which might cause issues in markdown
+    for message in rendered_messages:
+        message["content"] = format_for_markdown(message["content"])
+        # message["content"] = message["content"].replace("$", "&#36;")
+        # print(message["content"])
     return rendered_messages
 
 
@@ -231,7 +238,7 @@ def agent_profile_to_secret_info(
 
 def get_public_info(profile: AgentProfile, display_name: bool = True) -> str:
     if profile.age == 0:
-        return profile.public_info
+        return agent_profile_to_public_info(profile, display_name=display_name)
     else:
         return agent_profile_to_public_info(profile, display_name=display_name)
 

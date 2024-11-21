@@ -18,6 +18,7 @@ from socialstream.utils import (
     MODEL_LIST,
     ActionState,
     EnvAgentProfileCombo,
+    format_for_markdown,
     initialize_session_state,
     set_from_env_agent_profile_combo,
     set_settings,
