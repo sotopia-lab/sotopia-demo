@@ -104,140 +104,91 @@ def initialize_session_state():
         print("Session state initialized")
 
 
-def chat_demo():
-    initialize_session_state()
+def set_active(value: bool):
+    st.session_state.active = value
 
-    # Setup UI
-    with st.container():
-        # Scenario and Agent Selection
-        with st.expander("Simulation Setup", expanded=True):
-            scenario_col, scenario_desc_col = st.columns(2)
-            with scenario_col:
-                st.selectbox(
-                    "Choose a scenario:",
-                    st.session_state.scenarios.keys(),
-                    key="scenario_choice",
-                    disabled=st.session_state.active,
-                )
 
-            with scenario_desc_col:
-                st.markdown(
-                    f"""**Description:** {get_abstract(st.session_state.scenarios[st.session_state.scenario_choice]["scenario"])}""",
-                    unsafe_allow_html=True,
-                )
+def handle_end(message: dict[str, Any]):
+    set_active(False)
 
-            st.selectbox(
-                "Choose Agent 1:",
-                st.session_state.agent_list_1.keys(),
-                key="agent_choice_1",
-                disabled=st.session_state.active,
-            )
-            st.selectbox(
-                "Choose Agent 2:",
-                st.session_state.agent_list_2.keys(),
-                key="agent_choice_2",
-                disabled=st.session_state.active,
-            )
 
-        # Control Buttons
-        col1, col2, col3 = st.columns([1, 1, 3])
+def handle_server_msg(message: dict[str, Any]):
+    st.session_state.messages.append(
+        messageForRendering(
+            role=message["data"]["role"],
+            content=message["data"]["content"],
+            type=message["data"]["type"],
+        )
+    )
 
-        def set_active(value: bool):
-            st.session_state.active = value
 
-        chat_history_container = st.empty()
+def handle_error_msg(message: dict[str, Any]):
+    # TODO handle different error
+    print("[!!] Error in message: ", message)
+    st.error(f"Error in message: {message['data']['content']}")
 
-        async def run_simulation():
-            try:
-                # Connect
-                await st.session_state.websocket_manager.connect()
 
-                # Start simulation
-                await st.session_state.websocket_manager.start_simulation(
-                    st.session_state.scenarios[st.session_state.scenario_choice]["pk"],
-                    [
-                        st.session_state.agent_list_1[st.session_state.agent_choice_1][
-                            "pk"
-                        ],
-                        st.session_state.agent_list_2[st.session_state.agent_choice_2][
-                            "pk"
-                        ],
+def handle_message(message: dict[str, Any]):
+    # "END_SIM", "SERVER_MSG", "ERROR",
+    match message["type"]:
+        case "END_SIM":
+            st.success("Simulation ended")
+            set_active(False)
+        case "SERVER_MSG":
+            handle_server_msg(message)
+        case "ERROR":
+            handle_error_msg(message)
+        case _:
+            st.error(f"Unknown message type: {message['data']['type']}")
+
+
+async def run_simulation():
+    try:
+        await st.session_state.websocket_manager.connect()
+        await st.session_state.websocket_manager.start_simulation(
+            st.session_state.scenarios[st.session_state.scenario_choice]["pk"],
+            [
+                st.session_state.agent_list_1[st.session_state.agent_choice_1]["pk"],
+                st.session_state.agent_list_2[st.session_state.agent_choice_2]["pk"],
+            ],
+        )
+
+        while st.session_state.active:
+            message = await st.session_state.websocket_manager.receive_message()
+            if message is None:
+                continue
+            print("Received message", message)
+
+            handle_message(message)
+            with chat_history_container.container():
+                streamlit_rendering(
+                    messages=st.session_state.messages,
+                    agent_names=[
+                        st.session_state.agent_choice_1,
+                        st.session_state.agent_choice_2,
                     ],
                 )
 
-                while st.session_state.active:
-                    message = await st.session_state.websocket_manager.receive_message()
-                    if message is None:
-                        continue
-                    print("Received message", message)
-
-                    if message["type"] == "END_SIM":
-                        set_active(False)
-                        break
-
-                    if message["type"] == "SERVER_MSG":
-                        st.session_state.messages.append(
-                            messageForRendering(
-                                role=message["data"]["role"],
-                                content=message["data"]["content"],
-                                type=message["data"]["type"],
-                            )
-                        )
-
-                        with chat_history_container.container():
-                            streamlit_rendering(
-                                messages=st.session_state.messages,
-                                agent_names=[
-                                    st.session_state.agent_choice_1,
-                                    st.session_state.agent_choice_2,
-                                ],
-                            )
-
-                    if st.session_state.stop_sim:
-                        print("Stopping simulation")
-                        await st.session_state.websocket_manager.stop_simulation()
-                        st.session_state.stop_sim = False
-
-            finally:
-                await st.session_state.websocket_manager.disconnect()
-
-        def start_callback():
-            if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
-                st.error("Please select different agents")
-            else:
-                st.session_state.active = True
+            if st.session_state.stop_sim:
+                print("Stopping simulation")
+                await st.session_state.websocket_manager.stop_simulation()
                 st.session_state.stop_sim = False
-                st.session_state.messages = []
 
-        def stop_callback():
-            st.session_state.stop_sim = True
+    finally:
+        await st.session_state.websocket_manager.disconnect()
 
-        with col1:
-            st.button(
-                "Start Simulation",
-                disabled=st.session_state.active,
-                on_click=start_callback,
-            )
 
-        with col2:
-            st.button(
-                "Stop Simulation",
-                disabled=not st.session_state.active,
-                on_click=stop_callback,
-            )
+def start_callback():
+    if st.session_state.agent_choice_1 == st.session_state.agent_choice_2:
+        st.error("Please select different agents")
+    else:
+        st.session_state.active = True
+        st.session_state.stop_sim = False
+        st.session_state.messages = []
 
-        if st.session_state.active:
-            asyncio.run(run_simulation())
-            st.rerun()
 
-        with chat_history_container.container():
-            streamlit_rendering(
-                messages=st.session_state.messages,
-                agent_names=[
-                    st.session_state.agent_choice_1,
-                    st.session_state.agent_choice_2,
-                ],
-            )
+def stop_callback():
+    st.session_state.stop_sim = True
 
 
 def streamlit_rendering(messages: list[messageForRendering], agent_names) -> None:
@@ -292,6 +243,74 @@ def streamlit_rendering(messages: list[messageForRendering], agent_names) -> Non
                 st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
             else:
                 st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
+
+
+def chat_demo():
+    initialize_session_state()
+
+    # Setup UI
+    with st.container():
+        # Scenario and Agent Selection
+        with st.expander("Simulation Setup", expanded=True):
+            scenario_col, scenario_desc_col = st.columns(2)
+            with scenario_col:
+                st.selectbox(
+                    "Choose a scenario:",
+                    st.session_state.scenarios.keys(),
+                    key="scenario_choice",
+                    disabled=st.session_state.active,
+                )
+
+            with scenario_desc_col:
+                st.markdown(
+                    f"""**Description:** {get_abstract(st.session_state.scenarios[st.session_state.scenario_choice]["scenario"])}""",
+                    unsafe_allow_html=True,
+                )
+
+            st.selectbox(
+                "Choose Agent 1:",
+                st.session_state.agent_list_1.keys(),
+                key="agent_choice_1",
+                disabled=st.session_state.active,
+            )
+            st.selectbox(
+                "Choose Agent 2:",
+                st.session_state.agent_list_2.keys(),
+                key="agent_choice_2",
+                disabled=st.session_state.active,
+            )
+
+        # Control Buttons
+        col1, col2, col3 = st.columns([1, 1, 3])
+
+        chat_history_container = st.empty()
+
+        with col1:
+            st.button(
+                "Start Simulation",
+                disabled=st.session_state.active,
+                on_click=start_callback,
+            )
+
+        with col2:
+            st.button(
+                "Stop Simulation",
+                disabled=not st.session_state.active,
+                on_click=stop_callback,
+            )
+
+        if st.session_state.active:
+            asyncio.run(run_simulation())
+            st.rerun()
+
+        with chat_history_container.container():
+            streamlit_rendering(
+                messages=st.session_state.messages,
+                agent_names=[
+                    st.session_state.agent_choice_1,
+                    st.session_state.agent_choice_2,
+                ],
+            )
 
 
 if __name__ == "__main__":
