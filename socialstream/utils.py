@@ -61,10 +61,40 @@ class ActionState:
 
 WAIT_STATE: list[int] = [ActionState.AGENT1_WAITING, ActionState.AGENT2_WAITING]
 SPEAK_STATE: list[int] = [ActionState.AGENT1_SPEAKING, ActionState.AGENT2_SPEAKING]
+from collections import defaultdict
 
 
-def get_full_name(agent_profile: AgentProfile) -> str:
-    return f"{agent_profile.first_name} {agent_profile.last_name}"
+def get_full_name(agent_profile) -> str:
+    """
+    根据agent_profile返回唯一的全名。
+    如果存在重名，会自动添加数字后缀。
+    """
+    # 如果这个profile已经有映射的名字，直接返回
+    if agent_profile.pk in st.session_state.profile_name_mapping:
+        return st.session_state.profile_name_mapping[agent_profile.pk]
+
+    base_name = f"{agent_profile.first_name} {agent_profile.last_name}"
+
+    existing_names = set(st.session_state.profile_name_mapping.values())
+
+    if base_name not in existing_names:
+        st.session_state.profile_name_mapping[agent_profile.pk] = base_name
+        st.session_state.name_count[base_name] = 1
+        return base_name
+
+    st.session_state.name_count[base_name] += 1
+    new_name = f"{base_name}_{st.session_state.name_count[base_name]}"
+
+    while new_name in existing_names:
+        st.session_state.name_count[base_name] += 1
+        new_name = f"{base_name}_{st.session_state.name_count[base_name]}"
+
+    st.session_state.profile_name_mapping[agent_profile.pk] = new_name
+    return new_name
+
+
+# def get_full_name(agent_profile: AgentProfile) -> str:
+#     return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
 def print_current_speaker() -> None:
@@ -131,13 +161,28 @@ def load_additional_envs() -> list[EnvironmentProfile]:
 
 def initialize_session_state(force_reload: bool = False) -> None:
     if "active" not in st.session_state or force_reload:
-        all_agents = AgentProfile.find().all()[:10]
-        all_envs = EnvironmentProfile.find().all()[:10]
+        st.session_state.profile_name_mapping = defaultdict()
+        st.session_state.name_count = defaultdict(int)
+
+        all_agents = AgentProfile.find().all()
+        all_envs = EnvironmentProfile.find().all()
         additional_agents = load_additional_agents()
         additional_envs = load_additional_envs()
 
         all_agents = additional_agents + all_agents
         all_envs = additional_envs + all_envs
+
+        # if there are the same name, use _1, _2, _3, ...
+        # agent_names = [get_full_name(agent) for agent in all_agents]
+        # agent_name_count = {name: 0 for name in agent_names}
+        # agent_mapping = {}
+        # for agent in all_agents:
+        #     agent_new_name = agent_name = get_full_name(agent)
+        #     if agent_name_count[agent_name] > 0:
+        #         agent_new_name = f"{agent_name}_{agent_name_count[agent_name]}"
+        #         agent_mapping[agent_new_name] = agent
+        #     agent_name_count[agent_name] += 1
+        # st.session_state.agent_mapping = [agent_mapping] * 2
 
         st.session_state.agent_mapping = [
             {
@@ -423,3 +468,7 @@ def reset_database(db_url: str) -> None:
 
     EnvAgentComboStorage._meta.database = get_redis_connection(url=db_url)
     EnvAgentComboStorage.Meta.database = get_redis_connection(url=db_url)
+
+
+def format_for_markdown(text: str) -> str:
+    return text.replace("$", "&#36;")

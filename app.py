@@ -3,7 +3,7 @@ import os
 import streamlit as st
 
 from socialstream.chat import chat_demo_omniscient, chat_demo_simple
-from socialstream.rendering import rendering_demo
+from socialstream.rendering import chat_demo, rendering_demo
 from socialstream.utils import initialize_session_state, reset_database
 
 
@@ -35,6 +35,7 @@ st.markdown(
 )  # set the sidebar width to be wider
 
 DISPLAY_MODE = "Display Episodes"
+DISPLAY_STREAM_MODE = "Display Live Chat Stream"
 CHAT_SIMPLE_MODE = "Simple Chat"
 CHAT_OMNISCIENT_MODE = "Omniscient Chat & Editable Scenario"
 
@@ -67,7 +68,8 @@ new_database_url = st.sidebar.text_input(
 #     st.rerun()
 
 option = st.sidebar.radio(
-    "Function", (DISPLAY_MODE, CHAT_SIMPLE_MODE, CHAT_OMNISCIENT_MODE)
+    "Function",
+    (DISPLAY_MODE, DISPLAY_STREAM_MODE, CHAT_SIMPLE_MODE, CHAT_OMNISCIENT_MODE),
 )
 if option != st.session_state.get("mode", None):
     # when switching between modes, reset the active agent
@@ -84,3 +86,6 @@ elif option == CHAT_SIMPLE_MODE:
 elif option == CHAT_OMNISCIENT_MODE:
     st.session_state.mode = CHAT_OMNISCIENT_MODE
     chat_demo_omniscient()
+elif option == DISPLAY_STREAM_MODE:
+    st.session_state.mode = DISPLAY_STREAM_MODE
+    chat_demo()
