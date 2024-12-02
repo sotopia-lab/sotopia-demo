@@ -21,14 +21,14 @@ def compose_agent_names(agent_dict: dict[Any]) -> str:
 
 def get_scenarios():
     # use synchronous code to get the scenarios
-    with requests.get("http://localhost:8800/scenarios") as resp:
+    with requests.get("http://localhost:8000/scenarios") as resp:
         scenarios = resp.json()
     return {scenario["codename"]: scenario for scenario in scenarios}
 
 
 def get_agents() -> tuple[dict[str, dict[Any]], dict[str, dict[Any]]]:
     # use synchronous code to get the agents
-    with requests.get("http://localhost:8800/agents") as resp:
+    with requests.get("http://localhost:8000/agents") as resp:
         agents = resp.json()
     return {compose_agent_names(agent): agent for agent in agents}, {
         compose_agent_names(agent): agent for agent in agents
@@ -37,7 +37,7 @@ def get_agents() -> tuple[dict[str, dict[Any]], dict[str, dict[Any]]]:
 
 def get_models() -> dict[str, dict[Any]]:
     # use synchronous code to get the agents
-    with requests.get("http://localhost:8800/models") as resp:
+    with requests.get("http://localhost:8000/models") as resp:
         models = resp.json()
     return {model: model for model in models}, {model: model for model in models}
 
@@ -66,7 +66,7 @@ def initialize_session_state():
         st.session_state.active = False
 
         st.session_state.websocket_manager = WebSocketManager(
-            "ws://localhost:8800/ws/simulation?token=demo-token"
+            "ws://localhost:8000/ws/simulation?token=demo-token"
         )
         print("Session state initialized")
 
